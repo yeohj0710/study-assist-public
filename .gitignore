@@ -1,0 +1,15 @@
+__pycache__/
+*.py[cod]
+.venv/
+*.key
+*.jks
+*.keystore
+*.sqlite3*
+*.log
+.env
+.env.*
+받은 사진/
+etc/phone/build/
+etc/phone/toolchain/
+etc/phone/study-model-settings.json
+etc/book/reflow/학습 보조기 제작 가이드_*.pdf

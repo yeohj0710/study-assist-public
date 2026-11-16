@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Themed-icon silhouette (Android 13+): strokes only so the book outline and pulse stay legible. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="2.6"
+        android:strokeLineJoin="round"
+        android:pathData="M54,40 C48,36.5 40,35.5 32,36.5 L32,70 C40,69 48,70 54,73.5 Z M54,40 C60,36.5 68,35.5 76,36.5 L76,70 C68,69 60,70 54,73.5 Z" />
+    <path
+        android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="2.2"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M37.5,46 L48.5,47.2 M37.5,52.5 L48.5,53.4 M58.5,55 L62,55 L64.5,49 L67.5,61 L70,55 L72,55" />
+</vector>

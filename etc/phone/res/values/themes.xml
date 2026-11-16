@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Dark, flat app theme. Launch window is pure black with the book mark centered (API 28-30). -->
+    <style name="Theme.StudyAssist" parent="@android:style/Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@drawable/launch_screen</item>
+        <item name="android:colorBackground">@color/study_black</item>
+        <item name="android:colorPrimary">@color/study_black</item>
+        <item name="android:colorPrimaryDark">@color/study_black</item>
+        <item name="android:colorAccent">@color/study_sage</item>
+        <item name="android:textColorPrimary">@color/study_ink</item>
+        <item name="android:textColorSecondary">@color/study_muted</item>
+        <item name="android:statusBarColor">@color/study_black</item>
+        <item name="android:navigationBarColor">@color/study_black</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowLightNavigationBar">false</item>
+        <item name="android:alertDialogTheme">@style/Theme.StudyAssist.Dialog</item>
+    </style>
+
+    <style name="Theme.StudyAssist.Dialog" parent="@android:style/Theme.Material.Dialog.Alert">
+        <item name="android:colorBackground">@color/study_surface</item>
+        <item name="android:colorAccent">@color/study_sage</item>
+        <item name="android:textColorPrimary">@color/study_ink</item>
+        <item name="android:textColorSecondary">@color/study_muted</item>
+    </style>
+</resources>

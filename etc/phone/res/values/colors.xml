@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="study_black">#FF000000</color>
+    <color name="study_surface">#FF111614</color>
+    <color name="study_ink">#FFE1E8E4</color>
+    <color name="study_muted">#FF97A79F</color>
+    <color name="study_sage">#FF9CC3AE</color>
+    <color name="study_action">#FF1E3329</color>
+    <color name="icon_background">#FF0E1512</color>
+</resources>
