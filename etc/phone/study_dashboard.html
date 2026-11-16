@@ -293,7 +293,7 @@ const labels = {received:'수신', started:'시작', selected:'보관 후보', s
 const methods = {resize:'크기 조정', crop:'교재 영역 잘라냄', perspective:'기울어진 교재 보정', original:'원본 사용', unreadable:'사진 읽기 실패'};
 const providerName = {codex:'Codex 구독', agentrouter:'AgentRouter API', local:'로컬 Whisper', claude:'Claude 구독'};
 const kinds = {answer:'답 신호', check:'체크 확인', rescan:'재촬영 신호'};
-const choice = (a) => ['','①','②','③','④','⑤'][a] || '';
+const choice = (a, kind) => kind==='number' && Number.isInteger(a) ? String(a) : ['','①','②','③','④','⑤'][a] || '';
 const timeFormat = new Intl.DateTimeFormat('en-GB',{hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false});
 const when = (stamp) => timeFormat.format(new Date(stamp * 1000));
 const duration = (ms) => Number.isFinite(ms) ? (ms/1000).toLocaleString('ko-KR',{maximumFractionDigits:1}) + '초' : '';
@@ -329,13 +329,13 @@ function describe(e) {
     duration(e.elapsed_ms),e.message].filter(Boolean).join(' / ');
   if (e.stage==='system') return [providerName[e.provider],e.model].filter(Boolean).join(' ');
   if (e.stage==='image') return [e.group?'장면 '+e.group:'',methods[e.method]||e.message,e.width?e.width+' × '+e.height:''].filter(Boolean).join(' / ');
-  if (e.stage==='delivery') return [e.question?e.question+'번':'',kinds[e.kind],e.subject,choice(e.answer),e.message].filter(Boolean).join(' ');
+  if (e.stage==='delivery') return [e.question?e.question+'번':'',kinds[e.kind],e.subject,choice(e.answer,e.answer_kind),e.message].filter(Boolean).join(' ');
   if (e.stage==='listening') return [e.question?e.question+'번':'',e.start!=null?e.start+'–'+e.end+'초':'',e.source,
     e.questions?.length?'문항 '+list(e.questions):null,e.message].filter(Boolean).join(' / ');
   if (e.stage==='capture' && e.status==='received') return ['사진 '+e.frame+'장', '장면 '+e.group, e.similar?'유사 장면':'새 장면'].join(' / ');
   if (e.stage==='route' && e.status==='done') return ['장면 '+e.group,e.page?e.page+'쪽':null,
     e.questions?.length?'문항 '+list(e.questions):'번호 없는 조각',e.turn?'회전 '+e.turn+'°':null].filter(Boolean).join(' / ');
-  return [e.question?e.question+'번':null,e.photo_count?e.photo_count+'장':null,choice(e.answer),
+  return [e.question?e.question+'번':null,e.photo_count?e.photo_count+'장':null,choice(e.answer,e.answer_kind),
     e.group?'장면 '+e.group:e.groups?'장면 '+list(e.groups):null,e.message].filter(Boolean).join(' / ') || stages[e.stage];
 }
 function renderProviders(events) {
@@ -369,6 +369,11 @@ function makeJobs(events) {
           const score=v=>v ? Number(v.stem)*3+v.choices.length+Number(v.end) : 0;
           if(score(b)>=score(a))byKey.set(key,{...e,key,question:q,status:'detected'});
         }
+      }
+    } else if(e.stage==='route' && e.status==='held') {
+      for(const question of e.questions||[]) {
+        const key=e.run+'|'+(e.page_group||e.group)+':'+question;
+        if(byKey.has(key)) byKey.set(key,{...byKey.get(key),status:'held',message:e.message});
       }
     } else if(e.stage==='fragment' && ['waiting','held'].includes(e.status) && e.question) {
       const item=[...byKey.values()].findLast(j=>j.question===e.question && j.run===e.run && j.status==='detected');
@@ -405,7 +410,7 @@ function renderJobs(events) {
   replaceRows($('jobs'),jobs.map(j=>{
     const b=el('button',null,'job'); b.type='button'; b.dataset.rowId=j.key;b.setAttribute('aria-current',selection?.job===j.key);
     const subject=j.subject?(j.subject==='toeic'?'TOEIC':j.subject)+' ':'';
-    b.append(el('strong',subject+j.question+'번 '+choice(j.answer)+(j.listening?' / 듣기':'')),badge(j.status));
+    b.append(el('strong',subject+j.question+'번 '+choice(j.answer,j.answer_kind)+(j.listening?' / 듣기':'')),badge(j.status));
     const attempt=models.get(j.key);
     if(attempt){
       const modelLine=el('span',[providerName[attempt.provider],attempt.model,attempt.effort].filter(Boolean).join(' / '),'job-model');

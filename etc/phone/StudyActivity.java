@@ -826,13 +826,13 @@ public class StudyActivity extends Activity {
         fields.addView(strength);
         LinearLayout vibrationTests = new LinearLayout(this);
         Button contrast = button("짧게와 길게", false);
-        contrast.setOnClickListener(v -> vibrate(new long[]{0, 140, 800, 620},
+        contrast.setOnClickListener(v -> vibrate(new long[]{0, 140, 1100, 620},
             strength.getProgress() + MIN_STRENGTH));
         vibrationTests.addView(contrast, new LinearLayout.LayoutParams(-2, dp(48)));
         Button test = button("17번 답 ③ 시험", false);
         test.setOnClickListener(v -> vibrate(new long[]{
-            0, 140, 240, 140, 800, 140, 800, 620, 240, 140, 240, 140,
-            1500, 140, 240, 140, 240, 140
+            0, 140, 240, 140, 1100, 140, 1100, 620, 240, 140, 240, 140,
+            1900, 140, 240, 140, 240, 140
         }, strength.getProgress() + MIN_STRENGTH));
         LinearLayout.LayoutParams testSpace = new LinearLayout.LayoutParams(-2, dp(48));
         testSpace.setMarginStart(dp(8));
@@ -2123,12 +2123,12 @@ public class StudyActivity extends Activity {
         return connection;
     }
     private static long[] readWaveform(JSONArray values) {
-        if (values == null || values.length() < 4 || values.length() > 46 || values.length() % 2 != 0) return null;
+        if (values == null || values.length() < 4 || values.length() > 64 || values.length() % 2 != 0) return null;
         long[] waveform = new long[values.length()];
         boolean hasPulse = false;
         for (int i = 0; i < waveform.length; i++) {
             waveform[i] = values.optLong(i, -1);
-            if (waveform[i] < 0 || waveform[i] > 1500) return null;
+            if (waveform[i] < 0 || waveform[i] > 2500) return null;
             if (i % 2 == 1 && waveform[i] > 0) hasPulse = true;
         }
         return hasPulse ? waveform : null;
@@ -2220,10 +2220,12 @@ public class StudyActivity extends Activity {
             if ("체크 확인".equals(title)) title = "내 답 확인";
             if ("일반 답".equals(title)) title = "답 도착";
             String number = question > 0 ? String.valueOf(question) : digits.toString();
-            if (answer >= 1 && answer <= 5) option = String.valueOf("①②③④⑤".charAt(answer - 1));
+            String prefix = "number_answer".equals(kind) ? "단답 " : "보기 ";
+            if ("number_answer".equals(kind) && answer >= 0 && answer <= 999) option = String.valueOf(answer);
+            else if (answer >= 1 && answer <= 5) option = String.valueOf("①②③④⑤".charAt(answer - 1));
             if (number.isEmpty() && "다시 촬영".equals(title)) return title + " / 진행 기록 확인";
             return title + (number.isEmpty() ? "" : " / " + number + "번")
-                + (option.isEmpty() ? "" : " / 보기 " + option);
+                + (option.isEmpty() ? "" : " / " + prefix + option);
         }
 
         String parts() {
@@ -2349,7 +2351,7 @@ public class StudyActivity extends Activity {
         example.setPadding(dp(8), dp(4), dp(8), dp(4));
         cards.addView(example);
         TextView digits = new TextView(this);
-        digits.setText("짧게 0.14초, 길게 0.62초. 한 자리 안에서는 0.24초 쉬고, 다음 자리 전에는 0.8초 쉬어요. 보기 전에는 1.5초 쉰 뒤 짧은 횟수만 세세요.\n\n1~4는 짧게 그 횟수만큼, 5는 길게 한 번이에요. 6~9는 길게 한 번에 나머지 횟수를 더해요. 0은 길게 두 번이에요.");
+        digits.setText("짧게 0.14초, 길게 0.62초. 한 자리 안에서는 0.24초 쉬고, 다음 자리 전에는 1.1초, 답 앞에는 1.9초 쉬어요. 객관식은 짧게 울린 횟수를 세고, 단답형은 문항 번호처럼 한 자리씩 읽으세요. 답이 끝나면 최소 4초 쉬어요.\n\n1~4는 짧게 그 횟수만큼, 5는 길게 한 번이에요. 6~9는 길게 한 번에 나머지 횟수를 더해요. 0은 길게 두 번이에요.");
         digits.setTextSize(13);
         digits.setTextColor(MUTED);
         digits.setPadding(dp(8), dp(6), dp(8), dp(4));
@@ -2424,14 +2426,19 @@ public class StudyActivity extends Activity {
         if (activePacket != null || ackPacket != null || !result.optBoolean("valid") || packet == null) return;
         long[] waveform = readWaveform(packet.optJSONArray("timings"));
         if (waveform == null) return;
-        int question = packet.optInt("question"), choice = packet.optInt("answer");
+        int question = packet.optInt("question"), choice = packet.optInt("answer", -1);
         String kind = packet.optString("kind", "answer");
-        HapticPattern pattern = new HapticPattern(waveform, packet.optJSONArray("segments"), kind, question, choice);
+        boolean numeric = "number".equals(packet.optString("answer_kind"));
+        HapticPattern pattern = new HapticPattern(waveform, packet.optJSONArray("segments"),
+            numeric ? "number_answer" : kind, question, choice);
         long duration = pattern.timeline.duration();
         activePacket = packet.optString("id");
         activeVisit = visit;
         if ("rescan".equals(kind)) {
             activeAnswer = question > 0 ? question + "번 다시 촬영" : "다시 촬영할 장면이 있습니다";
+        } else if (numeric && question > 0 && choice >= 0 && choice <= 999) {
+            String subject = packet.optString("subject");
+            activeAnswer = (subject.isEmpty() ? "" : subject + " ") + question + "번 단답 " + choice;
         } else if (question > 0 && choice >= 1 && choice <= 5) {
             String options = "①②③④⑤";
             int marked = packet.optInt("marked");

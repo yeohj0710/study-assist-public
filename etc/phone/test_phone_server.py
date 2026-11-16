@@ -15,14 +15,63 @@ from phone_server import MAX_QUEUED_VIEWS, AgentRouter, AgentRouterRefused, Code
 
 
 class PhoneFlowTests(unittest.TestCase):
+    def test_csat_numeric_answer_and_elective_identity(self):
+        def page(subject, section, number):
+            return read_routing_result({
+                'study_page': True, 'subject': subject, 'math_section': section, 'page': 1,
+                'questions': [{'number': number, 'anchor': f'모집단에서 선택되는 종속변수 문항 {number}',
+                               'answer_kind': 'number', 'stem_readable': True, 'end_visible': True,
+                               'visible_choices': []}]
+            })
+        probability = page('수학', '확률과 통계', 30)
+        calculus = page('수학', '미적분', 30)
+        from phone_server import same_page
+        self.assertEqual('확률과통계', probability.subject)
+        self.assertEqual('미적분', calculus.subject)
+        self.assertFalse(same_page(probability, calculus))
+        self.assertTrue(probability.questions[30].ready)
+        self.assertTrue(probability.questions[30].numeric)
+        self.assertEqual(350, parse_choice({'question': 30, 'status': 'ok', 'choice': 350}, 30, numeric=True))
+        self.assertEqual(0, parse_choice({'question': 30, 'status': 'ok', 'choice': 0}, 30, numeric=True))
+        self.assertIsNone(parse_choice({'question': 30, 'status': 'ok', 'choice': 350}, 30))
+
+        study = Study(lambda _photos, _q: 350, 1, False)
+        self.addCleanup(study.routing_pool.shutdown)
+        study.stream = 'run'
+        study.page_scopes[1] = ('확률과통계', '')
+        study.forward('run', 1, b'numeric question', probability, 100, 1)
+        study.pool.shutdown()
+        packet = study.poll('run', None, False)['packet']
+        self.assertEqual((30, 350, 'number'), (packet['question'], packet['answer'], packet['answer_kind']))
+        self.assertEqual(['답 3','답 5','답 0'], [part['label'] for part in packet['segments'][-3:]])
+        self.assertEqual(1100, packet['segments'][-1]['from_ms'] - packet['segments'][-2]['to_ms'])
+
+    def test_math_dedup_uses_exam_and_section_instead_of_photo_page(self):
+        study = Study(None, 1, False)
+        self.addCleanup(study.pool.shutdown)
+        self.addCleanup(study.routing_pool.shutdown)
+        study.stream = 'run'
+        study.page_scopes = {
+            1: ('확률과통계', '2026학년도9월모의평가'),
+            2: ('확률과통계', '2026학년도9월모의평가'),
+            3: ('미적분', '2026학년도9월모의평가'),
+            4: ('확률과통계', '2027학년도9월모의평가'),
+        }
+        with patch.object(study.pool, 'submit') as solve:
+            self.assertTrue(study.submit('run', (1,), 24, (b'first',), (1,)))
+            self.assertFalse(study.submit('run', (2,), 24, (b'same question',), (2,)))
+            self.assertTrue(study.submit('run', (3,), 24, (b'other section',), (3,)))
+            self.assertTrue(study.submit('run', (4,), 24, (b'other year',), (4,)))
+        self.assertEqual(3, solve.call_count)
+
     def test_haptic_labels_match_pulses_and_number_grammar(self):
         timings, segments = haptic_trace(10, 4)
         self.assertEqual(timings, haptic(10, 4))
         self.assertEqual(['●●', '●', '▬▬', '', '●●●●'], [part['marks'] for part in segments])
         self.assertEqual({140, 620}, set(timings[1::2]))
-        self.assertEqual([0, 240, 800, 800, 240, 1500, 240, 240, 240], timings[::2])
+        self.assertEqual([0, 240, 1100, 1100, 240, 1900, 240, 240, 240], timings[::2])
         self.assertEqual(sum(timings), segments[-1]['to_ms'])
-        self.assertEqual(1500, segments[-2]['to_ms'] - segments[-2]['from_ms'])
+        self.assertEqual(1900, segments[-2]['to_ms'] - segments[-2]['from_ms'])
         for kind, expected in [('rescan', [620, 620]), ('check', [620, 140]), ('answer', [140, 140])]:
             with self.subTest(kind=kind):
                 wave, _ = haptic_trace(17, 0 if kind == 'rescan' else 3, kind)
@@ -54,11 +103,13 @@ class PhoneFlowTests(unittest.TestCase):
         player.save('책', (2,), 8, 3)
         study.pending.clear()
         self.assertIsNone(poll(115, current['id']))
-        other_page = poll(117)
+        self.assertIsNone(poll(118.99))
+        other_page = poll(119)
         self.assertEqual(3, other_page['question'])
         self.assertEqual('●●', other_page['segments'][0]['marks'])
         self.assertIsNone(poll(127, other_page['id']))
-        earlier_number = poll(129)
+        self.assertIsNone(poll(130.99))
+        earlier_number = poll(131)
         self.assertEqual(8, earlier_number['question'])
         self.assertIsNone(poll(139, earlier_number['id']))
         show(1, 150)
@@ -742,9 +793,9 @@ class PhoneFlowTests(unittest.TestCase):
                     wave = haptic(question, choice)
                     pulses = wave[1::2]
                     gaps = wave[::2]
-                    marker = gaps.index(1500)
-                    self.assertEqual(1, gaps.count(1500))
-                    self.assertEqual(len(str(question)), gaps[:marker].count(800))
+                    marker = gaps.index(1900)
+                    self.assertEqual(1, gaps.count(1900))
+                    self.assertEqual(len(str(question)), gaps[:marker].count(1100))
                     self.assertEqual([140] * choice, pulses[marker:])
                     self.assertLessEqual(len(wave), 46)
         self.assertNotEqual(haptic(17, 3), haptic(71, 3))

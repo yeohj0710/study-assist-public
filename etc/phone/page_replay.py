@@ -7,6 +7,7 @@ class PageReplay:
     def __init__(self, frame_gap=6):
         self.frame_gap = frame_gap
         self.answers = {}
+        self.numeric = set()
         self.confirmed = None
         self.candidate = None
         self.frames = 0
@@ -32,13 +33,16 @@ class PageReplay:
             self.confirmed = identity
             self.visit += 1
 
-    def save(self, book, pages, question, choice):
-        if not pages or not 1 <= question <= 999 or not 1 <= choice <= 5:
+    def save(self, book, pages, question, choice, *, numeric=False):
+        valid_answer = type(choice) is int and (0 <= choice <= 999 if numeric else 1 <= choice <= 5)
+        if not pages or not 1 <= question <= 999 or not valid_answer:
             raise ValueError('확정된 쪽과 유효한 문항번호, 보기 번호가 필요합니다.')
         key = (book, pages[0], question)
         if key not in self.answers:
             self.answers[key] = tuple(pages), choice
             self.waiting.append(key)
+            if numeric:
+                self.numeric.add(key)
 
     def ready_key(self):
         while self.waiting and self.waiting[0] in self.delivered:

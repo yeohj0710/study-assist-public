@@ -185,7 +185,7 @@ class StudyTraceTests(unittest.TestCase):
         study.player.observe("책", 2, 12)
         from unittest.mock import patch
 
-        with patch('phone_server.time.monotonic', side_effect=(100, 115, 117)):
+        with patch('phone_server.time.monotonic', side_effect=(100, 115, 119)):
             first = study.poll("run", None, False, draining=True)["packet"]
             study.poll("run", first["id"], True, draining=True)
             second = study.poll("run", None, False, draining=True)["packet"]
